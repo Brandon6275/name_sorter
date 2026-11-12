@@ -25,8 +25,11 @@
         /* 備選區 */
         .u-item { display: inline-flex; align-items: center; padding: 6px 10px; background: white; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 14px; cursor: pointer; user-select: none; }
         
-        /* 排序區 10宮格 */
-        .grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; min-height: 200px; }
+        /* 排序區 10宮格與分隔區 */
+        .zone-wrapper { border: 2px solid #E5E7EB; border-radius: 8px; margin-bottom: 15px; background: #F9FAFB; padding: 10px; }
+        .zone-header { font-weight: bold; margin-bottom: 10px; color: #374151; font-size: 15px; border-bottom: 2px solid #D1D5DB; padding-bottom: 6px; }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; min-height: 80px; padding-bottom: 10px; }
         @media (max-width: 768px) { .grid-container { grid-template-columns: repeat(5, 1fr); } }
         
         .grid-item { 
@@ -79,8 +82,26 @@
 </div>
 
 <div class="panel" style="border-top: 4px solid #3B82F6;">
-    <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳</span></strong>
-    <div class="grid-container" id="grid-list"></div>
+    <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳，並跨 ABCD 區細分</span></strong>
+    
+    <div id="export-target">
+        <div class="zone-wrapper">
+            <div class="zone-header">區間 A (<span id="cnt-A">0</span>)</div>
+            <div class="grid-container" id="grid-A" data-zone="A"></div>
+        </div>
+        <div class="zone-wrapper">
+            <div class="zone-header">區間 B (<span id="cnt-B">0</span>)</div>
+            <div class="grid-container" id="grid-B" data-zone="B"></div>
+        </div>
+        <div class="zone-wrapper">
+            <div class="zone-header">區間 C (<span id="cnt-C">0</span>)</div>
+            <div class="grid-container" id="grid-C" data-zone="C"></div>
+        </div>
+        <div class="zone-wrapper">
+            <div class="zone-header">區間 D (<span id="cnt-D">0</span>)</div>
+            <div class="grid-container" id="grid-D" data-zone="D"></div>
+        </div>
+    </div>
 </div>
 
 <!-- 匯入名單彈出視窗 -->
@@ -211,7 +232,7 @@
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         let txt = "【正式排序名單】\n";
         window.selected.forEach((p, i) => {
-            txt += `#${i+1} ${p.name} (${colorNames[p.color || 'none']})\n`;
+            txt += `#${i+1} [區間 ${p.zone || 'A'}] ${p.name} (${colorNames[p.color || 'none']})\n`;
         });
         const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
         const link = document.createElement("a");
@@ -222,9 +243,9 @@
 
     window.exportCSV = function() {
         if(window.selected.length === 0) return alert("排序區沒有資料！");
-        let csv = "\uFEFF名次,姓名,底色\n"; // 加入 UTF-8 BOM，防止 Excel 亂碼
+        let csv = "\uFEFF名次,區間,姓名,底色\n"; // 加入 UTF-8 BOM，防止 Excel 亂碼
         window.selected.forEach((p, i) => {
-            csv += `${i+1},${p.name},${colorNames[p.color || 'none']}\n`;
+            csv += `${i+1},${p.zone || 'A'},${p.name},${colorNames[p.color || 'none']}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -234,28 +255,32 @@
     };
 
     window.exportJPG = function() {
-        const grid = document.getElementById('grid-list');
+        const target = document.getElementById('export-target');
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         
-        // 為了確保手機端匯出也是 10 宮格，暫時強制覆蓋 CSS Grid 樣式
-        const originalWidth = grid.style.width;
-        const originalTemplate = grid.style.gridTemplateColumns;
-        const originalPadding = grid.style.padding;
+        // 為了確保手機端匯出也是 10 宮格，暫時強制覆蓋所有網格的 CSS Grid 樣式
+        const grids = target.querySelectorAll('.grid-container');
+        const originalStyles = [];
         
-        grid.style.width = '1000px'; 
-        grid.style.gridTemplateColumns = 'repeat(10, 1fr)';
-        grid.style.padding = '15px'; // 讓圖片有舒適的邊界留白
+        grids.forEach(grid => {
+            originalStyles.push({ w: grid.style.width, cols: grid.style.gridTemplateColumns, p: grid.style.padding });
+            grid.style.width = '1000px'; 
+            grid.style.gridTemplateColumns = 'repeat(10, 1fr)';
+            grid.style.padding = '10px';
+        });
         
         // 隱藏刪除按鈕 (匯出圖片不需要出現叉叉)
-        const removeBtns = grid.querySelectorAll('.item-remove');
+        const removeBtns = target.querySelectorAll('.item-remove');
         removeBtns.forEach(btn => btn.style.display = 'none');
 
         // 使用 html2canvas 將 DOM 轉換為 Canvas
-        html2canvas(grid, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+        html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
             // 復原原本的樣式配置
-            grid.style.width = originalWidth;
-            grid.style.gridTemplateColumns = originalTemplate;
-            grid.style.padding = originalPadding;
+            grids.forEach((grid, idx) => {
+                grid.style.width = originalStyles[idx].w;
+                grid.style.gridTemplateColumns = originalStyles[idx].cols;
+                grid.style.padding = originalStyles[idx].p;
+            });
             removeBtns.forEach(btn => btn.style.display = '');
 
             // 轉為 Base64 網址
@@ -291,12 +316,14 @@
     };
 
     window.moveAllToSorted = function() {
+        window.unselected.forEach(p => p.zone = 'A'); // 預設移入區間 A
         window.selected = window.selected.concat(window.unselected); 
         window.unselected = []; 
         window.syncData();
     };
 
     window.clearSorted = function() {
+        window.selected.forEach(p => p.zone = null);
         window.unselected = window.unselected.concat(window.selected); 
         window.selected = []; 
         window.syncData();
@@ -305,7 +332,9 @@
     window.moveToSelected = function(id) {
         const idx = window.unselected.findIndex(p => p.id === id);
         if(idx > -1) { 
-            window.selected.push(window.unselected.splice(idx, 1)[0]); 
+            const p = window.unselected.splice(idx, 1)[0];
+            p.zone = 'A'; // 預設移入區間 A
+            window.selected.push(p); 
             window.syncData(); 
         }
     };
@@ -410,14 +439,29 @@
             `<div class="u-item" onclick="moveToSelected('${p.id}')">${p.name} ➔</div>`
         ).join('');
 
-        const grid = document.getElementById('grid-list');
-        grid.innerHTML = window.selected.map((p, i) => `
-            <div class="grid-item" data-id="${p.id}" style="background: ${cMap[p.color||'none']}">
-                <div class="item-rank">#${i+1}</div>
-                <div class="item-remove" onclick="event.stopPropagation(); moveToUnselected('${p.id}')">✕</div>
-                <div class="item-text" title="${p.name}">${p.name}</div>
-            </div>
-        `).join('');
+        // 將人員按區間分類
+        const zones = { A: [], B: [], C: [], D: [] };
+        window.selected.forEach(p => {
+            const z = p.zone || 'A';
+            if (zones[z]) zones[z].push(p);
+            else zones['A'].push(p);
+        });
+
+        let globalRank = 1;
+
+        // 渲染 4 個獨立的網格區塊
+        ['A', 'B', 'C', 'D'].forEach(z => {
+            document.getElementById(`cnt-${z}`).innerText = zones[z].length;
+            const grid = document.getElementById(`grid-${z}`);
+            grid.innerHTML = zones[z].map(p => `
+                <div class="grid-item" data-id="${p.id}" style="background: ${cMap[p.color||'none']}">
+                    <div class="item-rank">#${globalRank++}</div>
+                    <div class="item-remove" onclick="event.stopPropagation(); moveToUnselected('${p.id}')">✕</div>
+                    <div class="item-text" title="${p.name}">${p.name}</div>
+                </div>
+            `).join('');
+        });
+        
         setupDrag();
     };
 
@@ -426,10 +470,9 @@
     let offsetX = 0, offsetY = 0;
 
     function setupDrag() {
-        const container = document.getElementById('grid-list');
-        const items = container.querySelectorAll('.grid-item');
+        const targetZones = document.querySelectorAll('.grid-container');
+        const items = document.querySelectorAll('.grid-item');
         
-        // 🔴 關鍵修復 1：把移動事件與放開事件抽離出來給 document 使用
         const handlePointerMove = (e) => {
             if(!dragEl || !ghostEl) return;
             e.preventDefault(); // 防止手機瀏覽器的原生滾動或選取
@@ -450,19 +493,25 @@
             if(!target) return;
             
             const targetItem = target.closest('.grid-item');
+            const targetContainer = target.closest('.grid-container');
+            
             if(targetItem && targetItem !== dragEl) {
-                // 根據在網格中的順序，自動將底層的方塊推擠讓位
+                // 如果指到另一個方塊，自動將底層的方塊推擠讓位
+                const container = targetItem.parentNode;
                 const itemsArr = Array.from(container.children);
                 const dragIdx = itemsArr.indexOf(dragEl);
                 const targetIdx = itemsArr.indexOf(targetItem);
                 
-                if (dragIdx < targetIdx) {
+                // 判斷是在同個容器內還是跨容器，跨容器時 dragIdx 會是 -1
+                if (dragIdx > -1 && dragIdx < targetIdx) {
                     targetItem.after(dragEl);
                 } else {
                     targetItem.before(dragEl);
                 }
-                
-                // 即時更新畫面上所有編號
+                updateRanks();
+            } else if (targetContainer && !targetItem) {
+                // 如果指到空的容器區域，直接加到最後面
+                targetContainer.appendChild(dragEl);
                 updateRanks();
             }
         };
@@ -486,11 +535,17 @@
             
             dragEl = null;
             
-            // 根據最終的 DOM 順序重組資料陣列
+            // 根據最終的 DOM 順序與所屬區間重組資料陣列
             const newSelected = [];
-            container.querySelectorAll('.grid-item').forEach(el => {
-                const id = el.getAttribute('data-id');
-                newSelected.push(window.selected.find(p => p.id === id));
+            ['A', 'B', 'C', 'D'].forEach(zone => {
+                document.getElementById('grid-' + zone).querySelectorAll('.grid-item').forEach(el => {
+                    const id = el.getAttribute('data-id');
+                    const person = window.selected.find(p => p.id === id);
+                    if(person) {
+                        person.zone = zone; // 紀錄被拖曳到的新區間
+                        newSelected.push(person);
+                    }
+                });
             });
             window.selected = newSelected;
             
@@ -527,8 +582,6 @@
                 // 3. 原本的方塊變透明 (變成佔位符，保留空間)
                 dragEl.style.opacity = '0';
                 
-                // 🔴 關鍵修復 2：捨棄 setPointerCapture，改用全域監聽！
-                // 這樣方塊在 DOM 裡面怎麼換位子，都不會弄丟您的手指位置
                 document.addEventListener('pointermove', handlePointerMove, { passive: false });
                 document.addEventListener('pointerup', handlePointerUp);
                 document.addEventListener('pointercancel', handlePointerUp);
@@ -538,10 +591,13 @@
 
     // 拖曳時即時更新畫面上顯示的名次編號
     function updateRanks() {
-        const container = document.getElementById('grid-list');
-        container.querySelectorAll('.grid-item').forEach((el, index) => {
-            const rankDiv = el.querySelector('.item-rank');
-            if (rankDiv) rankDiv.innerText = '#' + (index + 1);
+        let globalRank = 1;
+        ['A', 'B', 'C', 'D'].forEach(zone => {
+            const container = document.getElementById('grid-' + zone);
+            container.querySelectorAll('.grid-item').forEach(el => {
+                const rankDiv = el.querySelector('.item-rank');
+                if (rankDiv) rankDiv.innerText = '#' + (globalRank++);
+            });
         });
     }
 
