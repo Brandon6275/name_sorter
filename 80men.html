@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>80人名單雙區塊排序表單</title>
-    <!-- 引入 html2canvas 模組供圖片匯出使用 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
@@ -43,32 +42,43 @@
         .item-rank { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #6B7280; font-weight: bold; }
         .item-remove { position: absolute; top: 2px; right: 4px; font-size: 12px; color: #EF4444; cursor: pointer; padding: 2px; line-height: 1; }
         .item-text { font-size: 14px; font-weight: 500; text-align: center; width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+        
+        /* 管理員專屬區塊預設隱藏 */
+        .admin-only { display: none; }
     </style>
 </head>
 <body>
 
 <!-- 📦 主要應用程式內容 -->
 <div id="app-container">
+    
+    <!-- 大眾與管理員共用的匯出按鈕 -->
     <div class="panel">
-        <div class="flex-wrap" style="margin-bottom: 10px;">
-            <button onclick="moveAllToSorted()">全入排序區</button>
-            <button onclick="clearSorted()">清空排序</button>
-            <button onclick="clearAll()" style="background:#EF4444; color:white; border-color:#EF4444;">全部清空</button>
-            <span style="border-left: 1px solid #D1D5DB; margin: 0 5px;"></span>
+        <div class="flex-wrap">
             <button onclick="exportTXT()" style="background:#10B981; color:white; border-color:#10B981;">匯出 TXT</button>
             <button onclick="exportCSV()" style="background:#10B981; color:white; border-color:#10B981;">匯出 CSV</button>
             <button onclick="exportJPG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 JPG (十宮格)</button>
         </div>
     </div>
 
-    <div class="panel" style="border-top: 4px solid #9CA3AF;">
-        <strong style="display:block; margin-bottom: 8px;">備選區 (<span id="u-cnt">0</span>)</strong>
-        <div style="margin-bottom: 10px; display: flex; gap: 5px;">
+    <!-- 只有管理員看得見的危險控制面板 -->
+    <div class="panel admin-only" id="admin-panel" style="border: 2px dashed #EF4444; background: #FEF2F2;">
+        <strong style="color: #EF4444; display: block; margin-bottom: 8px;">👑 管理員專屬控制區</strong>
+        <div class="flex-wrap" style="margin-bottom: 10px;">
+            <button onclick="moveAllToSorted()">全入排序區</button>
+            <button onclick="clearSorted()">清空排序</button>
+            <button onclick="clearAll()" style="background:#EF4444; color:white; border-color:#EF4444;">全部清空</button>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 5px;">
             <input type="text" id="new-name" placeholder="手動輸入人名" style="padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; width: 120px;">
             <button onclick="addNewName()">新增</button>
             <button onclick="openImportModal()" style="background:#10B981; color:white; border-color:#10B981;">批次匯入</button>
             <button onclick="loadXiangXiangCup2027()" style="background:#F59E0B; color:white; border-color:#F59E0B;">2027香香盃參賽者</button>
         </div>
+    </div>
+
+    <div class="panel" style="border-top: 4px solid #9CA3AF;">
+        <strong style="display:block; margin-bottom: 8px;">備選區 (<span id="u-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 點擊人名送入排序區</span></strong>
         <div id="unselected-list" class="flex-wrap"></div>
     </div>
 
@@ -96,7 +106,7 @@
     </div>
 </div>
 
-<!-- 匯入名單彈出視窗 -->
+<!-- 匯入名單彈出視窗 (僅管理員可用) -->
 <div id="import-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; justify-content:center; align-items:center;">
     <div style="background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
         <h3 style="margin-top:0; margin-bottom:10px;">批次匯入名單</h3>
@@ -121,12 +131,16 @@
     </div>
 </div>
 
-<!-- 採用 type="module" 匯入 Firebase -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 🔴 您的 Firebase Config
+    // 檢查是否為管理員模式 (網址包含 ?admin=true)
+    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    if(isAdmin) {
+        document.getElementById('admin-panel').style.display = 'block';
+    }
+
     const firebaseConfig = {
         apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         authDomain: "shiang80men.firebaseapp.com",
@@ -142,7 +156,6 @@
 
     let db, docRef;
     
-    // 啟動 Firebase 雲端同步
     if (firebaseConfig.projectId) {
         try {
             const app = initializeApp(firebaseConfig);
@@ -156,8 +169,6 @@
                     window.selected = data.selected || [];
                     render();
                 }
-            }, (error) => {
-                console.error("Firebase 同步錯誤:", error);
             });
         } catch(e) {
             console.error("Firebase 初始化失敗:", e);
@@ -174,6 +185,7 @@
     };
 
     window.addNewName = function() {
+        if(!isAdmin) return;
         const input = document.getElementById('new-name');
         if(input.value.trim()) {
             window.unselected.push({ id: 'p'+Date.now(), name: input.value.trim() });
@@ -183,7 +195,8 @@
     };
 
     window.clearAll = function() {
-        if(confirm("確定要清空所有名單資料嗎？")) {
+        if(!isAdmin) return;
+        if(confirm("【警告】這將清空所有人排好的資料，確定繼續嗎？")) {
             window.unselected = [];
             window.selected = [];
             window.syncData();
@@ -272,6 +285,7 @@
     };
 
     window.moveAllToSorted = function() {
+        if(!isAdmin) return;
         window.unselected.forEach(p => p.zone = 'A'); 
         window.selected = window.selected.concat(window.unselected); 
         window.unselected = []; 
@@ -279,6 +293,7 @@
     };
 
     window.clearSorted = function() {
+        if(!isAdmin) return;
         window.selected.forEach(p => p.zone = null);
         window.unselected = window.unselected.concat(window.selected); 
         window.selected = []; 
@@ -304,6 +319,7 @@
     };
 
     window.deleteName = function(id) {
+        if(!isAdmin) return;
         const idx = window.unselected.findIndex(p => p.id === id);
         if(idx > -1) {
             window.unselected.splice(idx, 1);
@@ -312,6 +328,7 @@
     };
 
     window.loadXiangXiangCup2027 = function() {
+        if(!isAdmin) return;
         if(confirm("確定要匯入 2027 香香盃參賽者名單嗎？")) {
             const rawList = "便當,明葦,可魯,阿儒,羅伯特,張小丁,凱凱,阿翰,立軍,小熊,阿修,阿耀,小原,耀中,小雷,Ethan,Kery,Eric,香,韋伯,卡特,元信,達達,Po,鈞壬,老謝,凱能,普羅,蔥花,Jasper,孟丞,小柯,小方,阿哲,俊霖,小崇,貝塔,娜娜,家本,東岳,髒髒,妮妮,泰迪,包子,亨利,傑西,Ken,阿走,肯德基,育群,瑞德,阿任,浩文,Benny,小威,潘囍,小林,Fatty,珀芒阿信,阿樂,阿佑,阿郡,邁特,威威,小美,麻糬,胖虎,阿福,奇奇,順諭,厄尼,Josh,華華,小羅,小恩,森,元氣,慶慶,胖拉,梨子";
             const names = rawList.split(',').map(n => n.trim()).filter(n => n.length > 0);
@@ -326,7 +343,7 @@
     };
 
     window.openImportModal = function() {
-        document.getElementById('import-modal').style.display = 'flex';
+        if(isAdmin) document.getElementById('import-modal').style.display = 'flex';
     };
 
     window.closeImportModal = function() {
@@ -336,6 +353,7 @@
     };
 
     window.processImport = function() {
+        if(!isAdmin) return;
         const fileInput = document.getElementById('import-file');
         const textInput = document.getElementById('import-text').value;
 
@@ -373,7 +391,7 @@
         uList.innerHTML = window.unselected.map(p => 
             `<div class="u-item" onclick="moveToSelected('${p.id}')">
                 ${p.name} ➔
-                <span style="color:#EF4444; margin-left:8px; font-weight:bold; font-size:14px; line-height:1; padding:2px; cursor:pointer;" onclick="event.stopPropagation(); deleteName('${p.id}')">✕</span>
+                ${isAdmin ? `<span style="color:#EF4444; margin-left:8px; font-weight:bold; font-size:14px; line-height:1; padding:2px; cursor:pointer;" onclick="event.stopPropagation(); deleteName('${p.id}')">✕</span>` : ''}
             </div>`
         ).join('');
 
