@@ -67,6 +67,7 @@
     <div style="margin-bottom: 10px; display: flex; gap: 5px;">
         <input type="text" id="new-name" placeholder="手動輸入人名" style="padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; width: 120px;">
         <button onclick="addNewName()">新增</button>
+        <button onclick="openImportModal()" style="background:#10B981; color:white; border-color:#10B981;">批次匯入</button>
     </div>
     <div id="unselected-list" class="flex-wrap"></div>
 </div>
@@ -74,6 +75,20 @@
 <div class="panel" style="border-top: 4px solid #3B82F6;">
     <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳</span></strong>
     <div class="grid-container" id="grid-list"></div>
+</div>
+
+<!-- 匯入名單彈出視窗 -->
+<div id="import-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; justify-content:center; align-items:center;">
+    <div style="background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-top:0; margin-bottom:10px;">批次匯入名單</h3>
+        <p style="font-size:13px; color:#6B7280; margin-bottom:10px;">請貼上人名（支援換行或逗號分隔），或選擇 TXT / CSV 檔案：</p>
+        <textarea id="import-text" rows="5" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:4px; margin-bottom:10px; font-family:sans-serif;" placeholder="例如：&#10;張三&#10;李四&#10;王五..."></textarea>
+        <input type="file" id="import-file" accept=".txt,.csv" style="margin-bottom:15px; width:100%; font-size:13px;">
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button onclick="closeImportModal()">取消</button>
+            <button onclick="processImport()" style="background:#3B82F6; color:white; border-color:#3B82F6;">確認匯入</button>
+        </div>
+    </div>
 </div>
 
 <!-- 採用 type="module" 匯入 Firebase -->
@@ -200,6 +215,58 @@
                 window.selected[i].color = c;
             }
             window.syncData();
+        }
+    };
+
+    // =====================================
+    // 批次匯入功能
+    // =====================================
+    window.openImportModal = function() {
+        document.getElementById('import-modal').style.display = 'flex';
+    };
+
+    window.closeImportModal = function() {
+        document.getElementById('import-modal').style.display = 'none';
+        document.getElementById('import-text').value = '';
+        document.getElementById('import-file').value = '';
+    };
+
+    window.processImport = function() {
+        const fileInput = document.getElementById('import-file');
+        const textInput = document.getElementById('import-text').value;
+
+        const parseAndImport = (text) => {
+            // 支援換行符號、英文逗號與中文逗號分隔
+            const names = text.split(/[\n,，]+/).map(n => n.trim()).filter(n => n.length > 0);
+            if (names.length === 0) {
+                alert("找不到有效的人名！");
+                return;
+            }
+            
+            names.forEach((name, i) => {
+                // 加入亂數確保大量匯入時 ID 不會重複
+                const uniqueId = 'p' + Date.now() + Math.random().toString(36).substr(2, 5) + i;
+                window.unselected.push({ id: uniqueId, name: name, color: 'none' });
+            });
+            
+            window.syncData();
+            window.closeImportModal();
+            alert(`成功匯入 ${names.length} 筆名單！`);
+        };
+
+        if (fileInput.files && fileInput.files.length > 0) {
+            // 從檔案讀取
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                parseAndImport(e.target.result);
+            };
+            reader.readAsText(file);
+        } else if (textInput.trim().length > 0) {
+            // 從文字框讀取
+            parseAndImport(textInput);
+        } else {
+            alert("請貼上文字或選擇檔案！");
         }
     };
 
