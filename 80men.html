@@ -301,6 +301,75 @@
         const container = document.getElementById('grid-list');
         const items = container.querySelectorAll('.grid-item');
         
+        // 🔴 關鍵修復 1：把移動事件與放開事件抽離出來給 document 使用
+        const handlePointerMove = (e) => {
+            if(!dragEl || !ghostEl) return;
+            e.preventDefault(); // 防止手機瀏覽器的原生滾動或選取
+            
+            // 更新分身位置，完全跟隨手指
+            ghostEl.style.left = (e.clientX - offsetX) + 'px';
+            ghostEl.style.top = (e.clientY - offsetY) + 'px';
+            
+            // 邊緣自動滾動 (Auto-scroll) 解決手機畫面太長的問題
+            if (e.clientY < 80) window.scrollBy(0, -10);
+            if (e.clientY > window.innerHeight - 80) window.scrollBy(0, 10);
+            
+            // 偵測手指底下目前的方塊
+            dragEl.style.visibility = 'hidden'; // 暫時隱藏佔位符以利穿透偵測
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+            dragEl.style.visibility = ''; // 恢復
+            
+            if(!target) return;
+            
+            const targetItem = target.closest('.grid-item');
+            if(targetItem && targetItem !== dragEl) {
+                // 根據在網格中的順序，自動將底層的方塊推擠讓位
+                const itemsArr = Array.from(container.children);
+                const dragIdx = itemsArr.indexOf(dragEl);
+                const targetIdx = itemsArr.indexOf(targetItem);
+                
+                if (dragIdx < targetIdx) {
+                    targetItem.after(dragEl);
+                } else {
+                    targetItem.before(dragEl);
+                }
+                
+                // 即時更新畫面上所有編號
+                updateRanks();
+            }
+        };
+
+        const handlePointerUp = (e) => {
+            if(!dragEl) return;
+            
+            // 清除浮動分身
+            if (ghostEl && ghostEl.parentNode) {
+                ghostEl.parentNode.removeChild(ghostEl);
+            }
+            ghostEl = null;
+            
+            // 恢復原始方塊顯示
+            dragEl.style.opacity = '';
+            
+            // 解除 document 的全域監聽
+            document.removeEventListener('pointermove', handlePointerMove);
+            document.removeEventListener('pointerup', handlePointerUp);
+            document.removeEventListener('pointercancel', handlePointerUp);
+            
+            dragEl = null;
+            
+            // 根據最終的 DOM 順序重組資料陣列
+            const newSelected = [];
+            container.querySelectorAll('.grid-item').forEach(el => {
+                const id = el.getAttribute('data-id');
+                newSelected.push(window.selected.find(p => p.id === id));
+            });
+            window.selected = newSelected;
+            
+            // 觸發雲端同步並重新渲染
+            window.syncData();
+        };
+
         items.forEach(item => {
             item.addEventListener('pointerdown', (e) => {
                 if(e.target.classList.contains('item-remove')) return;
@@ -330,74 +399,12 @@
                 // 3. 原本的方塊變透明 (變成佔位符，保留空間)
                 dragEl.style.opacity = '0';
                 
-                // 鎖定手指拖曳
-                dragEl.setPointerCapture(e.pointerId);
+                // 🔴 關鍵修復 2：捨棄 setPointerCapture，改用全域監聽！
+                // 這樣方塊在 DOM 裡面怎麼換位子，都不會弄丟您的手指位置
+                document.addEventListener('pointermove', handlePointerMove, { passive: false });
+                document.addEventListener('pointerup', handlePointerUp);
+                document.addEventListener('pointercancel', handlePointerUp);
             });
-            
-            item.addEventListener('pointermove', (e) => {
-                if(!dragEl || dragEl !== item || !ghostEl) return;
-                
-                // 更新分身位置，完全跟隨手指
-                ghostEl.style.left = (e.clientX - offsetX) + 'px';
-                ghostEl.style.top = (e.clientY - offsetY) + 'px';
-                
-                // 邊緣自動滾動 (Auto-scroll) 解決手機畫面太長的問題
-                if (e.clientY < 80) window.scrollBy(0, -10);
-                if (e.clientY > window.innerHeight - 80) window.scrollBy(0, 10);
-                
-                // 偵測手指底下目前的方塊
-                dragEl.style.visibility = 'hidden'; // 暫時隱藏佔位符以利穿透偵測
-                const target = document.elementFromPoint(e.clientX, e.clientY);
-                dragEl.style.visibility = ''; // 恢復
-                
-                if(!target) return;
-                
-                const targetItem = target.closest('.grid-item');
-                if(targetItem && targetItem !== dragEl) {
-                    // 根據在網格中的順序，自動將底層的方塊推擠讓位
-                    const itemsArr = Array.from(container.children);
-                    const dragIdx = itemsArr.indexOf(dragEl);
-                    const targetIdx = itemsArr.indexOf(targetItem);
-                    
-                    if (dragIdx < targetIdx) {
-                        targetItem.after(dragEl);
-                    } else {
-                        targetItem.before(dragEl);
-                    }
-                    
-                    // 即時更新畫面上所有編號
-                    updateRanks();
-                }
-            });
-
-            const endDrag = (e) => {
-                if(!dragEl) return;
-                
-                // 清除浮動分身
-                if (ghostEl && ghostEl.parentNode) {
-                    ghostEl.parentNode.removeChild(ghostEl);
-                }
-                ghostEl = null;
-                
-                // 恢復原始方塊顯示
-                dragEl.style.opacity = '';
-                dragEl.releasePointerCapture(e.pointerId);
-                dragEl = null;
-                
-                // 根據最終的 DOM 順序重組資料陣列
-                const newSelected = [];
-                container.querySelectorAll('.grid-item').forEach(el => {
-                    const id = el.getAttribute('data-id');
-                    newSelected.push(window.selected.find(p => p.id === id));
-                });
-                window.selected = newSelected;
-                
-                // 觸發雲端同步並重新渲染
-                window.syncData();
-            };
-            
-            item.addEventListener('pointerup', endDrag);
-            item.addEventListener('pointercancel', endDrag);
         });
     }
 
