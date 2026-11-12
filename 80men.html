@@ -17,10 +17,9 @@
         .panel { background: white; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         button { padding: 6px 10px; border: 1px solid #D1D5DB; border-radius: 4px; background: white; cursor: pointer; font-size: 13px; }
         button:active { background: #F3F4F6; }
-        input[type="number"], input[type="text"] { padding: 4px; border: 1px solid #D1D5DB; border-radius: 4px; width: 50px; }
+        input[type="number"], input[type="text"], input[type="password"] { padding: 4px; border: 1px solid #D1D5DB; border-radius: 4px; }
         
         .flex-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-        .color-btn { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #9CA3AF; cursor: pointer; }
         
         /* 備選區 */
         .u-item { display: inline-flex; align-items: center; padding: 6px 10px; background: white; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 14px; cursor: pointer; user-select: none; }
@@ -48,48 +47,51 @@
 </head>
 <body>
 
-<div class="panel">
-    <div class="flex-wrap" style="margin-bottom: 10px;">
-        <button onclick="moveAllToSorted()">全入排序區</button>
-        <button onclick="clearSorted()">清空排序</button>
-        <button onclick="clearAll()" style="background:#EF4444; color:white; border-color:#EF4444;">全部清空</button>
-        <span style="border-left: 1px solid #D1D5DB; margin: 0 5px;"></span>
-        <button onclick="exportTXT()" style="background:#10B981; color:white; border-color:#10B981;">匯出 TXT</button>
-        <button onclick="exportCSV()" style="background:#10B981; color:white; border-color:#10B981;">匯出 CSV</button>
-        <button onclick="exportJPG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 JPG (十宮格)</button>
+<!-- 📦 主要應用程式內容 -->
+<div id="app-container">
+    <div class="panel">
+        <div class="flex-wrap" style="margin-bottom: 10px;">
+            <button onclick="moveAllToSorted()">全入排序區</button>
+            <button onclick="clearSorted()">清空排序</button>
+            <button onclick="clearAll()" style="background:#EF4444; color:white; border-color:#EF4444;">全部清空</button>
+            <span style="border-left: 1px solid #D1D5DB; margin: 0 5px;"></span>
+            <button onclick="exportTXT()" style="background:#10B981; color:white; border-color:#10B981;">匯出 TXT</button>
+            <button onclick="exportCSV()" style="background:#10B981; color:white; border-color:#10B981;">匯出 CSV</button>
+            <button onclick="exportJPG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 JPG (十宮格)</button>
+        </div>
     </div>
-</div>
 
-<div class="panel" style="border-top: 4px solid #9CA3AF;">
-    <strong style="display:block; margin-bottom: 8px;">備選區 (<span id="u-cnt">0</span>)</strong>
-    <div style="margin-bottom: 10px; display: flex; gap: 5px;">
-        <input type="text" id="new-name" placeholder="手動輸入人名" style="padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; width: 120px;">
-        <button onclick="addNewName()">新增</button>
-        <button onclick="openImportModal()" style="background:#10B981; color:white; border-color:#10B981;">批次匯入</button>
-        <button onclick="loadXiangXiangCup()" style="background:#F59E0B; color:white; border-color:#F59E0B;">2027香香盃參賽者</button>
+    <div class="panel" style="border-top: 4px solid #9CA3AF;">
+        <strong style="display:block; margin-bottom: 8px;">備選區 (<span id="u-cnt">0</span>)</strong>
+        <div style="margin-bottom: 10px; display: flex; gap: 5px;">
+            <input type="text" id="new-name" placeholder="手動輸入人名" style="padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; width: 120px;">
+            <button onclick="addNewName()">新增</button>
+            <button onclick="openImportModal()" style="background:#10B981; color:white; border-color:#10B981;">批次匯入</button>
+            <button onclick="loadXiangXiangCup2027()" style="background:#F59E0B; color:white; border-color:#F59E0B;">2027香香盃參賽者</button>
+        </div>
+        <div id="unselected-list" class="flex-wrap"></div>
     </div>
-    <div id="unselected-list" class="flex-wrap"></div>
-</div>
 
-<div class="panel" style="border-top: 4px solid #3B82F6;">
-    <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳，並跨 ABCD 區細分</span></strong>
-    
-    <div id="export-target">
-        <div class="zone-wrapper">
-            <div class="zone-header">區間 A (<span id="cnt-A">0</span>)</div>
-            <div class="grid-container" id="grid-A" data-zone="A"></div>
-        </div>
-        <div class="zone-wrapper">
-            <div class="zone-header">區間 B (<span id="cnt-B">0</span>)</div>
-            <div class="grid-container" id="grid-B" data-zone="B"></div>
-        </div>
-        <div class="zone-wrapper">
-            <div class="zone-header">區間 C (<span id="cnt-C">0</span>)</div>
-            <div class="grid-container" id="grid-C" data-zone="C"></div>
-        </div>
-        <div class="zone-wrapper">
-            <div class="zone-header">區間 D (<span id="cnt-D">0</span>)</div>
-            <div class="grid-container" id="grid-D" data-zone="D"></div>
+    <div class="panel" style="border-top: 4px solid #3B82F6;">
+        <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳，並跨 ABCD 區細分</span></strong>
+        
+        <div id="export-target">
+            <div class="zone-wrapper">
+                <div class="zone-header">區間 A (<span id="cnt-A">0</span>)</div>
+                <div class="grid-container" id="grid-A" data-zone="A"></div>
+            </div>
+            <div class="zone-wrapper">
+                <div class="zone-header">區間 B (<span id="cnt-B">0</span>)</div>
+                <div class="grid-container" id="grid-B" data-zone="B"></div>
+            </div>
+            <div class="zone-wrapper">
+                <div class="zone-header">區間 C (<span id="cnt-C">0</span>)</div>
+                <div class="grid-container" id="grid-C" data-zone="C"></div>
+            </div>
+            <div class="zone-wrapper">
+                <div class="zone-header">區間 D (<span id="cnt-D">0</span>)</div>
+                <div class="grid-container" id="grid-D" data-zone="D"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -108,7 +110,7 @@
     </div>
 </div>
 
-<!-- 匯出圖片彈出視窗 (解決手機無法直接下載的問題) -->
+<!-- 匯出圖片彈出視窗 -->
 <div id="image-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; flex-direction:column;">
     <div style="background:white; padding:15px; border-radius:8px; width:95%; max-width:1050px; display:flex; flex-direction:column; align-items:center; position:relative;">
         <button onclick="closeImageModal()" style="position:absolute; top:10px; right:10px; background:#EF4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-weight:bold;">關閉</button>
@@ -124,41 +126,29 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 🔴 請在此貼上您的 Firebase Config
+    // 🔴 您的 Firebase Config
     const firebaseConfig = {
-apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
-
-  authDomain: "shiang80men.firebaseapp.com",
-
-  projectId: "shiang80men",
-
-  storageBucket: "shiang80men.firebasestorage.app",
-
-  messagingSenderId: "1036601026877",
-
-  appId: "1:1036601026877:web:ec207442dbd3b347953d54"
-
+        apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
+        authDomain: "shiang80men.firebaseapp.com",
+        projectId: "shiang80men",
+        storageBucket: "shiang80men.firebasestorage.app",
+        messagingSenderId: "1036601026877",
+        appId: "1:1036601026877:web:ec207442dbd3b347953d54"
     };
 
-    
     window.unselected = [];
     window.selected = [];
-    let pId = 1;
     const zoneColors = { A: 'var(--z-red)', B: 'var(--z-green)', C: 'var(--z-yellow)', D: 'var(--z-blue)' };
 
-    // =====================================
-    // Firebase 連線狀態處理
-    // =====================================
     let db, docRef;
     
+    // 啟動 Firebase 雲端同步
     if (firebaseConfig.projectId) {
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            // ✅ 修正錯誤的關鍵：明確指定兩段式路徑 (Collection名稱, Document名稱)
             docRef = doc(db, "sorter_collection", "shared_state");
 
-            // 監聽雲端資料變更
             onSnapshot(docRef, (snap) => {
                 if(snap.exists()) {
                     const data = snap.data();
@@ -174,20 +164,15 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         }
     }
 
-    // 寫入雲端 (若無設定 Firebase 則自動退回單機模式)
     window.syncData = function() {
         if (docRef) {
             setDoc(docRef, { unselected: window.unselected, selected: window.selected })
                 .catch(err => console.error("寫入失敗:", err));
         } else {
-            // 單機測試模式
             render();
         }
     };
 
-    // =====================================
-    // 核心操作邏輯
-    // =====================================
     window.addNewName = function() {
         const input = document.getElementById('new-name');
         if(input.value.trim()) {
@@ -205,25 +190,6 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         }
     };
 
-    window.loadXiangXiangCup = function() {
-        const namesStr = "便當,明葦,可魯,阿儒,羅伯特,張小丁,凱凱,阿翰,立軍,小熊,阿修,阿耀,小原,耀中,小雷,Ethan,Kery,Eric,香,韋伯,卡特,元信,達達,Po,鈞壬,老謝,凱能,普羅,蔥花,Jasper,孟丞,小柯,小方,阿哲,俊霖,小崇,貝塔,娜娜,家本,東岳,髒髒,妮妮,泰迪,包子,亨利,傑西,Ken,阿走,肯德基,育群,瑞德,阿任,浩文,Benny,小威,潘囍,小林,Fatty,珀芒阿信,阿樂,阿佑,阿郡,邁特,威威,小美,麻糬,胖虎,阿福,奇奇,順諭,厄尼,Josh,華華,小羅,小恩,森,元氣,慶慶,胖拉,梨子";
-        const names = namesStr.split(",");
-        
-        if (window.unselected.length > 0 || window.selected.length > 0) {
-            if (!confirm("載入參賽者名單將會清空目前畫面上的資料，確定要繼續嗎？")) return;
-        }
-        
-        window.unselected = [];
-        window.selected = [];
-        
-        names.forEach((name, i) => {
-            const uniqueId = 'p' + Date.now() + Math.random().toString(36).substring(2, 7) + i;
-            window.unselected.push({ id: uniqueId, name: name.trim() });
-        });
-        
-        window.syncData();
-    };
-
     window.exportTXT = function() {
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         let txt = "【正式排序名單】\n";
@@ -239,7 +205,7 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
 
     window.exportCSV = function() {
         if(window.selected.length === 0) return alert("排序區沒有資料！");
-        let csv = "\uFEFF名次,區間,姓名\n"; // 加入 UTF-8 BOM，防止 Excel 亂碼
+        let csv = "\uFEFF名次,區間,姓名\n"; 
         window.selected.forEach((p, i) => {
             csv += `${i+1},${p.zone || 'A'},${p.name}\n`;
         });
@@ -254,7 +220,6 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         const target = document.getElementById('export-target');
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         
-        // 為了確保手機端匯出也是 10 宮格，暫時強制覆蓋所有網格的 CSS Grid 樣式
         const grids = target.querySelectorAll('.grid-container');
         const originalStyles = [];
         
@@ -265,13 +230,10 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
             grid.style.padding = '10px';
         });
         
-        // 隱藏刪除按鈕 (匯出圖片不需要出現叉叉)
         const removeBtns = target.querySelectorAll('.item-remove');
         removeBtns.forEach(btn => btn.style.display = 'none');
 
-        // 使用 html2canvas 將 DOM 轉換為 Canvas
         html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-            // 復原原本的樣式配置
             grids.forEach((grid, idx) => {
                 grid.style.width = originalStyles[idx].w;
                 grid.style.gridTemplateColumns = originalStyles[idx].cols;
@@ -279,10 +241,8 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
             });
             removeBtns.forEach(btn => btn.style.display = '');
 
-            // 轉為 Base64 網址
             const imgUrl = canvas.toDataURL('image/jpeg', 0.9);
             
-            // 建立強制全螢幕遮罩與圖片預覽，適用 iOS 長按儲存
             const imgModal = document.createElement('div');
             imgModal.style.position = 'fixed';
             imgModal.style.top = '0';
@@ -312,7 +272,7 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
     };
 
     window.moveAllToSorted = function() {
-        window.unselected.forEach(p => p.zone = 'A'); // 預設移入區間 A
+        window.unselected.forEach(p => p.zone = 'A'); 
         window.selected = window.selected.concat(window.unselected); 
         window.unselected = []; 
         window.syncData();
@@ -329,7 +289,7 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         const idx = window.unselected.findIndex(p => p.id === id);
         if(idx > -1) { 
             const p = window.unselected.splice(idx, 1)[0];
-            p.zone = 'A'; // 預設移入區間 A
+            p.zone = 'A'; 
             window.selected.push(p); 
             window.syncData(); 
         }
@@ -343,9 +303,14 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         }
     };
 
-    // =====================================
-    // 專屬香香盃名單載入
-    // =====================================
+    window.deleteName = function(id) {
+        const idx = window.unselected.findIndex(p => p.id === id);
+        if(idx > -1) {
+            window.unselected.splice(idx, 1);
+            window.syncData();
+        }
+    };
+
     window.loadXiangXiangCup2027 = function() {
         if(confirm("確定要匯入 2027 香香盃參賽者名單嗎？")) {
             const rawList = "便當,明葦,可魯,阿儒,羅伯特,張小丁,凱凱,阿翰,立軍,小熊,阿修,阿耀,小原,耀中,小雷,Ethan,Kery,Eric,香,韋伯,卡特,元信,達達,Po,鈞壬,老謝,凱能,普羅,蔥花,Jasper,孟丞,小柯,小方,阿哲,俊霖,小崇,貝塔,娜娜,家本,東岳,髒髒,妮妮,泰迪,包子,亨利,傑西,Ken,阿走,肯德基,育群,瑞德,阿任,浩文,Benny,小威,潘囍,小林,Fatty,珀芒阿信,阿樂,阿佑,阿郡,邁特,威威,小美,麻糬,胖虎,阿福,奇奇,順諭,厄尼,Josh,華華,小羅,小恩,森,元氣,慶慶,胖拉,梨子";
@@ -360,9 +325,6 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         }
     };
 
-    // =====================================
-    // 批次匯入功能
-    // =====================================
     window.openImportModal = function() {
         document.getElementById('import-modal').style.display = 'flex';
     };
@@ -378,15 +340,10 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         const textInput = document.getElementById('import-text').value;
 
         const parseAndImport = (text) => {
-            // 支援換行符號、英文逗號與中文逗號分隔
             const names = text.split(/[\n,，]+/).map(n => n.trim()).filter(n => n.length > 0);
-            if (names.length === 0) {
-                alert("找不到有效的人名！");
-                return;
-            }
+            if (names.length === 0) return alert("找不到有效的人名！");
             
             names.forEach((name, i) => {
-                // 加入亂數確保大量匯入時 ID 不會重複
                 const uniqueId = 'p' + Date.now() + Math.random().toString(36).substr(2, 5) + i;
                 window.unselected.push({ id: uniqueId, name: name });
             });
@@ -397,34 +354,29 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         };
 
         if (fileInput.files && fileInput.files.length > 0) {
-            // 從檔案讀取
             const file = fileInput.files[0];
             const reader = new FileReader();
-            reader.onload = function(e) {
-                parseAndImport(e.target.result);
-            };
+            reader.onload = function(e) { parseAndImport(e.target.result); };
             reader.readAsText(file);
         } else if (textInput.trim().length > 0) {
-            // 從文字框讀取
             parseAndImport(textInput);
         } else {
             alert("請貼上文字或選擇檔案！");
         }
     };
 
-    // =====================================
-    // 渲染與拖曳 (Drag & Drop)
-    // =====================================
     window.render = function() {
         document.getElementById('u-cnt').innerText = window.unselected.length;
         document.getElementById('s-cnt').innerText = window.selected.length;
         
         const uList = document.getElementById('unselected-list');
         uList.innerHTML = window.unselected.map(p => 
-            `<div class="u-item" onclick="moveToSelected('${p.id}')">${p.name} ➔</div>`
+            `<div class="u-item" onclick="moveToSelected('${p.id}')">
+                ${p.name} ➔
+                <span style="color:#EF4444; margin-left:8px; font-weight:bold; font-size:14px; line-height:1; padding:2px; cursor:pointer;" onclick="event.stopPropagation(); deleteName('${p.id}')">✕</span>
+            </div>`
         ).join('');
 
-        // 將人員按區間分類
         const zones = { A: [], B: [], C: [], D: [] };
         window.selected.forEach(p => {
             const z = p.zone || 'A';
@@ -433,8 +385,6 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         });
 
         let globalRank = 1;
-
-        // 渲染 4 個獨立的網格區塊
         ['A', 'B', 'C', 'D'].forEach(z => {
             document.getElementById(`cnt-${z}`).innerText = zones[z].length;
             const grid = document.getElementById(`grid-${z}`);
@@ -450,60 +400,45 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         setupDrag();
     };
 
-    let dragEl = null;
-    let ghostEl = null;
-    let offsetX = 0, offsetY = 0;
+    let dragEl = null, ghostEl = null, offsetX = 0, offsetY = 0;
 
     function setupDrag() {
-        const targetZones = document.querySelectorAll('.grid-container');
         const items = document.querySelectorAll('.grid-item');
         
         const handlePointerMove = (e) => {
             if(!dragEl || !ghostEl) return;
-            e.preventDefault(); // 防止手機瀏覽器的原生滾動或選取
+            e.preventDefault(); 
             
-            // 更新分身位置，完全跟隨手指
             ghostEl.style.left = (e.clientX - offsetX) + 'px';
             ghostEl.style.top = (e.clientY - offsetY) + 'px';
             
-            // 邊緣自動滾動 (Auto-scroll) 解決手機畫面太長的問題
             if (e.clientY < 80) window.scrollBy(0, -10);
             if (e.clientY > window.innerHeight - 80) window.scrollBy(0, 10);
             
-            // 偵測手指底下目前的方塊
-            dragEl.style.visibility = 'hidden'; // 暫時隱藏佔位符以利穿透偵測
+            dragEl.style.visibility = 'hidden'; 
             const target = document.elementFromPoint(e.clientX, e.clientY);
-            dragEl.style.visibility = ''; // 恢復
+            dragEl.style.visibility = ''; 
             
             if(!target) return;
             
             const targetItem = target.closest('.grid-item');
             const targetContainer = target.closest('.grid-container');
 
-            // 拖曳時，自動更新分身的底色以反映目標區塊的顏色
             if(targetContainer) {
                 const currentZone = targetContainer.getAttribute('data-zone');
-                if(currentZone && ghostEl) {
-                    ghostEl.style.background = zoneColors[currentZone];
-                }
+                if(currentZone && ghostEl) ghostEl.style.background = zoneColors[currentZone];
             }
             
             if(targetItem && targetItem !== dragEl) {
-                // 如果指到另一個方塊，自動將底層的方塊推擠讓位
                 const container = targetItem.parentNode;
                 const itemsArr = Array.from(container.children);
                 const dragIdx = itemsArr.indexOf(dragEl);
                 const targetIdx = itemsArr.indexOf(targetItem);
                 
-                // 判斷是在同個容器內還是跨容器，跨容器時 dragIdx 會是 -1
-                if (dragIdx > -1 && dragIdx < targetIdx) {
-                    targetItem.after(dragEl);
-                } else {
-                    targetItem.before(dragEl);
-                }
+                if (dragIdx > -1 && dragIdx < targetIdx) targetItem.after(dragEl);
+                else targetItem.before(dragEl);
                 updateRanks();
             } else if (targetContainer && !targetItem) {
-                // 如果指到空的容器區域，直接加到最後面
                 targetContainer.appendChild(dragEl);
                 updateRanks();
             }
@@ -512,37 +447,28 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         const handlePointerUp = (e) => {
             if(!dragEl) return;
             
-            // 清除浮動分身
-            if (ghostEl && ghostEl.parentNode) {
-                ghostEl.parentNode.removeChild(ghostEl);
-            }
+            if (ghostEl && ghostEl.parentNode) ghostEl.parentNode.removeChild(ghostEl);
             ghostEl = null;
-            
-            // 恢復原始方塊顯示
             dragEl.style.opacity = '';
             
-            // 解除 document 的全域監聽
             document.removeEventListener('pointermove', handlePointerMove);
             document.removeEventListener('pointerup', handlePointerUp);
             document.removeEventListener('pointercancel', handlePointerUp);
             
             dragEl = null;
             
-            // 根據最終的 DOM 順序與所屬區間重組資料陣列
             const newSelected = [];
             ['A', 'B', 'C', 'D'].forEach(zone => {
                 document.getElementById('grid-' + zone).querySelectorAll('.grid-item').forEach(el => {
                     const id = el.getAttribute('data-id');
                     const person = window.selected.find(p => p.id === id);
                     if(person) {
-                        person.zone = zone; // 紀錄被拖曳到的新區間
+                        person.zone = zone; 
                         newSelected.push(person);
                     }
                 });
             });
             window.selected = newSelected;
-            
-            // 觸發雲端同步並重新渲染
             window.syncData();
         };
 
@@ -551,13 +477,10 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
                 if(e.target.classList.contains('item-remove')) return;
                 
                 dragEl = item;
-                
-                // 1. 取得方塊原始座標，計算手指相對於方塊的偏移量
                 const rect = dragEl.getBoundingClientRect();
                 offsetX = e.clientX - rect.left;
                 offsetY = e.clientY - rect.top;
                 
-                // 2. 建立隨手指移動的浮動分身 (Ghost)
                 ghostEl = dragEl.cloneNode(true);
                 ghostEl.style.position = 'fixed';
                 ghostEl.style.left = rect.left + 'px';
@@ -565,14 +488,13 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
                 ghostEl.style.width = rect.width + 'px';
                 ghostEl.style.height = rect.height + 'px';
                 ghostEl.style.opacity = '0.9';
-                ghostEl.style.pointerEvents = 'none'; // 讓滑鼠能穿透分身偵測底部格子
+                ghostEl.style.pointerEvents = 'none'; 
                 ghostEl.style.zIndex = '9999';
-                ghostEl.style.transform = 'scale(1.1)'; // 微微放大增加拖曳手感
+                ghostEl.style.transform = 'scale(1.1)'; 
                 ghostEl.style.boxShadow = '0 10px 20px rgba(0,0,0,0.2)';
                 ghostEl.style.transition = 'none';
                 document.body.appendChild(ghostEl);
                 
-                // 3. 原本的方塊變透明 (變成佔位符，保留空間)
                 dragEl.style.opacity = '0';
                 
                 document.addEventListener('pointermove', handlePointerMove, { passive: false });
@@ -582,7 +504,6 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         });
     }
 
-    // 拖曳時即時更新畫面上顯示的名次編號
     function updateRanks() {
         let globalRank = 1;
         ['A', 'B', 'C', 'D'].forEach(zone => {
@@ -594,8 +515,8 @@ apiKey: "AIzaSyBuDpw1ObUpJAcT1PJFXBg7v0ExM4qUtVo",
         });
     }
 
-    // 啟動單機預設渲染
-    window.render();
+    // 單機初始化渲染
+    render();
 </script>
 </body>
 </html>
