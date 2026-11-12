@@ -294,6 +294,9 @@
     };
 
     let dragEl = null;
+    let ghostEl = null;
+    let offsetX = 0, offsetY = 0;
+
     function setupDrag() {
         const container = document.getElementById('grid-list');
         const items = container.querySelectorAll('.grid-item');
@@ -301,39 +304,109 @@
         items.forEach(item => {
             item.addEventListener('pointerdown', (e) => {
                 if(e.target.classList.contains('item-remove')) return;
+                
                 dragEl = item;
-                item.setPointerCapture(e.pointerId);
-                item.classList.add('ghost');
+                
+                // 1. 取得方塊原始座標，計算手指相對於方塊的偏移量
+                const rect = dragEl.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                // 2. 建立隨手指移動的浮動分身 (Ghost)
+                ghostEl = dragEl.cloneNode(true);
+                ghostEl.style.position = 'fixed';
+                ghostEl.style.left = rect.left + 'px';
+                ghostEl.style.top = rect.top + 'px';
+                ghostEl.style.width = rect.width + 'px';
+                ghostEl.style.height = rect.height + 'px';
+                ghostEl.style.opacity = '0.9';
+                ghostEl.style.pointerEvents = 'none'; // 讓滑鼠能穿透分身偵測底部格子
+                ghostEl.style.zIndex = '9999';
+                ghostEl.style.transform = 'scale(1.1)'; // 微微放大增加拖曳手感
+                ghostEl.style.boxShadow = '0 10px 20px rgba(0,0,0,0.2)';
+                ghostEl.style.transition = 'none';
+                document.body.appendChild(ghostEl);
+                
+                // 3. 原本的方塊變透明 (變成佔位符，保留空間)
+                dragEl.style.opacity = '0';
+                
+                // 鎖定手指拖曳
+                dragEl.setPointerCapture(e.pointerId);
             });
             
             item.addEventListener('pointermove', (e) => {
-                if(!dragEl || dragEl === item) return;
-                const rect = item.getBoundingClientRect();
-                if(e.clientX < rect.left + rect.width/2) {
-                    container.insertBefore(dragEl, item);
-                } else {
-                    container.insertBefore(dragEl, item.nextSibling);
+                if(!dragEl || dragEl !== item || !ghostEl) return;
+                
+                // 更新分身位置，完全跟隨手指
+                ghostEl.style.left = (e.clientX - offsetX) + 'px';
+                ghostEl.style.top = (e.clientY - offsetY) + 'px';
+                
+                // 邊緣自動滾動 (Auto-scroll) 解決手機畫面太長的問題
+                if (e.clientY < 80) window.scrollBy(0, -10);
+                if (e.clientY > window.innerHeight - 80) window.scrollBy(0, 10);
+                
+                // 偵測手指底下目前的方塊
+                dragEl.style.visibility = 'hidden'; // 暫時隱藏佔位符以利穿透偵測
+                const target = document.elementFromPoint(e.clientX, e.clientY);
+                dragEl.style.visibility = ''; // 恢復
+                
+                if(!target) return;
+                
+                const targetItem = target.closest('.grid-item');
+                if(targetItem && targetItem !== dragEl) {
+                    // 根據在網格中的順序，自動將底層的方塊推擠讓位
+                    const itemsArr = Array.from(container.children);
+                    const dragIdx = itemsArr.indexOf(dragEl);
+                    const targetIdx = itemsArr.indexOf(targetItem);
+                    
+                    if (dragIdx < targetIdx) {
+                        targetItem.after(dragEl);
+                    } else {
+                        targetItem.before(dragEl);
+                    }
+                    
+                    // 即時更新畫面上所有編號
+                    updateRanks();
                 }
             });
 
             const endDrag = (e) => {
                 if(!dragEl) return;
-                dragEl.classList.remove('ghost');
-                dragEl.releasePointerCapture(e.pointerId);
                 
-                // 重組陣列並觸發同步
+                // 清除浮動分身
+                if (ghostEl && ghostEl.parentNode) {
+                    ghostEl.parentNode.removeChild(ghostEl);
+                }
+                ghostEl = null;
+                
+                // 恢復原始方塊顯示
+                dragEl.style.opacity = '';
+                dragEl.releasePointerCapture(e.pointerId);
+                dragEl = null;
+                
+                // 根據最終的 DOM 順序重組資料陣列
                 const newSelected = [];
                 container.querySelectorAll('.grid-item').forEach(el => {
                     const id = el.getAttribute('data-id');
                     newSelected.push(window.selected.find(p => p.id === id));
                 });
                 window.selected = newSelected;
-                dragEl = null;
+                
+                // 觸發雲端同步並重新渲染
                 window.syncData();
             };
             
             item.addEventListener('pointerup', endDrag);
             item.addEventListener('pointercancel', endDrag);
+        });
+    }
+
+    // 拖曳時即時更新畫面上顯示的名次編號
+    function updateRanks() {
+        const container = document.getElementById('grid-list');
+        container.querySelectorAll('.grid-item').forEach((el, index) => {
+            const rankDiv = el.querySelector('.item-rank');
+            if (rankDiv) rankDiv.innerText = '#' + (index + 1);
         });
     }
 
