@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>80人名單雙區塊排序表單</title>
+    <!-- 引入 html2canvas 模組供圖片匯出使用 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --c-pink: #FDF2F2; --c-blue: #EBF5FF; --c-mint: #F0FDF4;
@@ -45,10 +47,13 @@
 
 <div class="panel">
     <div class="flex-wrap" style="margin-bottom: 10px;">
-        <button onclick="loadSample()" style="background:#3B82F6; color:white; border-color:#3B82F6;">載入80人</button>
         <button onclick="moveAllToSorted()">全入排序區</button>
         <button onclick="clearSorted()">清空排序</button>
         <button onclick="clearAll()" style="background:#EF4444; color:white; border-color:#EF4444;">全部清空</button>
+        <span style="border-left: 1px solid #D1D5DB; margin: 0 5px;"></span>
+        <button onclick="exportTXT()" style="background:#10B981; color:white; border-color:#10B981;">匯出 TXT</button>
+        <button onclick="exportCSV()" style="background:#10B981; color:white; border-color:#10B981;">匯出 CSV</button>
+        <button onclick="exportPNG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 PNG (十宮格)</button>
     </div>
     
     <div style="margin-top:10px; font-size: 13px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;">
@@ -110,6 +115,7 @@
     window.selected = [];
     let pId = 1;
     const cMap = { pink:'var(--c-pink)', blue:'var(--c-blue)', mint:'var(--c-mint)', yellow:'var(--c-yellow)', purple:'var(--c-purple)', none:'var(--c-none)' };
+    const colorNames = { pink: '柔粉紅', blue: '柔天藍', mint: '柔薄荷', yellow: '柔檸黃', purple: '柔薰紫', none: '無底色' };
 
     // =====================================
     // Firebase 連線狀態處理
@@ -170,13 +176,63 @@
         }
     };
 
-    window.loadSample = function() {
-        window.unselected = []; window.selected = [];
-        const surnames = "趙錢孫李周吳鄭王馮陳褚衛蔣沈韓楊朱秦尤許何呂施張孔曹嚴華金魏陶姜".split("");
-        for(let i=0; i<80; i++) {
-            window.unselected.push({ id: 'p'+Date.now()+i, name: surnames[i%surnames.length]+'小明', color: 'none' });
-        }
-        window.syncData();
+    window.exportTXT = function() {
+        if(window.selected.length === 0) return alert("排序區沒有資料！");
+        let txt = "【正式排序名單】\n";
+        window.selected.forEach((p, i) => {
+            txt += `#${i+1} ${p.name} (${colorNames[p.color || 'none']})\n`;
+        });
+        const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "排序名單.txt";
+        link.click();
+    };
+
+    window.exportCSV = function() {
+        if(window.selected.length === 0) return alert("排序區沒有資料！");
+        let csv = "\uFEFF名次,姓名,底色\n"; // 加入 UTF-8 BOM，防止 Excel 亂碼
+        window.selected.forEach((p, i) => {
+            csv += `${i+1},${p.name},${colorNames[p.color || 'none']}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "排序名單.csv";
+        link.click();
+    };
+
+    window.exportPNG = function() {
+        const grid = document.getElementById('grid-list');
+        if(window.selected.length === 0) return alert("排序區沒有資料！");
+        
+        // 為了確保手機端匯出也是 10 宮格，暫時強制覆蓋 CSS Grid 樣式
+        const originalWidth = grid.style.width;
+        const originalTemplate = grid.style.gridTemplateColumns;
+        const originalPadding = grid.style.padding;
+        
+        grid.style.width = '1000px'; 
+        grid.style.gridTemplateColumns = 'repeat(10, 1fr)';
+        grid.style.padding = '15px'; // 讓圖片有舒適的邊界留白
+        
+        // 隱藏刪除按鈕 (匯出圖片不需要出現叉叉)
+        const removeBtns = grid.querySelectorAll('.item-remove');
+        removeBtns.forEach(btn => btn.style.display = 'none');
+
+        // 使用 html2canvas 將 DOM 轉換為 Canvas
+        html2canvas(grid, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+            // 復原原本的樣式配置
+            grid.style.width = originalWidth;
+            grid.style.gridTemplateColumns = originalTemplate;
+            grid.style.padding = originalPadding;
+            removeBtns.forEach(btn => btn.style.display = '');
+
+            // 下載圖片
+            const link = document.createElement('a');
+            link.download = '名單排序_十宮格.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
     };
 
     window.moveAllToSorted = function() {
