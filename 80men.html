@@ -8,8 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
-            --c-pink: #FDF2F2; --c-blue: #EBF5FF; --c-mint: #F0FDF4;
-            --c-yellow: #FEFCE8; --c-purple: #F3E8FF; --c-none: #FFFFFF;
+            --z-red: #FEE2E2; --z-green: #DCFCE7; 
+            --z-yellow: #FEF9C3; --z-blue: #DBEAFE;
         }
         * { box-sizing: border-box; font-family: sans-serif; }
         body { margin: 0; padding: 10px; background-color: #E5E7EB; color: #1F2937; touch-action: manipulation; }
@@ -57,16 +57,6 @@
         <button onclick="exportTXT()" style="background:#10B981; color:white; border-color:#10B981;">匯出 TXT</button>
         <button onclick="exportCSV()" style="background:#10B981; color:white; border-color:#10B981;">匯出 CSV</button>
         <button onclick="exportJPG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 JPG (十宮格)</button>
-    </div>
-    
-    <div style="margin-top:10px; font-size: 13px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;">
-        第 <input type="number" id="c-start" min="1"> 到 <input type="number" id="c-end" min="1"> 名：
-        <div class="color-btn" style="background: var(--c-pink)" onclick="applyColor('pink')"></div>
-        <div class="color-btn" style="background: var(--c-blue)" onclick="applyColor('blue')"></div>
-        <div class="color-btn" style="background: var(--c-mint)" onclick="applyColor('mint')"></div>
-        <div class="color-btn" style="background: var(--c-yellow)" onclick="applyColor('yellow')"></div>
-        <div class="color-btn" style="background: var(--c-purple)" onclick="applyColor('purple')"></div>
-        <div class="color-btn" style="background: var(--c-none)" onclick="applyColor('none')"></div>
     </div>
 </div>
 
@@ -147,8 +137,7 @@
     window.unselected = [];
     window.selected = [];
     let pId = 1;
-    const cMap = { pink:'var(--c-pink)', blue:'var(--c-blue)', mint:'var(--c-mint)', yellow:'var(--c-yellow)', purple:'var(--c-purple)', none:'var(--c-none)' };
-    const colorNames = { pink: '柔粉紅', blue: '柔天藍', mint: '柔薄荷', yellow: '柔檸黃', purple: '柔薰紫', none: '無底色' };
+    const zoneColors = { A: 'var(--z-red)', B: 'var(--z-green)', C: 'var(--z-yellow)', D: 'var(--z-blue)' };
 
     // =====================================
     // Firebase 連線狀態處理
@@ -195,7 +184,7 @@
     window.addNewName = function() {
         const input = document.getElementById('new-name');
         if(input.value.trim()) {
-            window.unselected.push({ id: 'p'+Date.now(), name: input.value.trim(), color: 'none' });
+            window.unselected.push({ id: 'p'+Date.now(), name: input.value.trim() });
             input.value = '';
             window.syncData();
         }
@@ -222,7 +211,7 @@
         
         names.forEach((name, i) => {
             const uniqueId = 'p' + Date.now() + Math.random().toString(36).substring(2, 7) + i;
-            window.unselected.push({ id: uniqueId, name: name.trim(), color: 'none' });
+            window.unselected.push({ id: uniqueId, name: name.trim() });
         });
         
         window.syncData();
@@ -232,7 +221,7 @@
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         let txt = "【正式排序名單】\n";
         window.selected.forEach((p, i) => {
-            txt += `#${i+1} [區間 ${p.zone || 'A'}] ${p.name} (${colorNames[p.color || 'none']})\n`;
+            txt += `#${i+1} [區間 ${p.zone || 'A'}] ${p.name}\n`;
         });
         const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
         const link = document.createElement("a");
@@ -243,9 +232,9 @@
 
     window.exportCSV = function() {
         if(window.selected.length === 0) return alert("排序區沒有資料！");
-        let csv = "\uFEFF名次,區間,姓名,底色\n"; // 加入 UTF-8 BOM，防止 Excel 亂碼
+        let csv = "\uFEFF名次,區間,姓名\n"; // 加入 UTF-8 BOM，防止 Excel 亂碼
         window.selected.forEach((p, i) => {
-            csv += `${i+1},${p.zone || 'A'},${p.name},${colorNames[p.color || 'none']}\n`;
+            csv += `${i+1},${p.zone || 'A'},${p.name}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -347,17 +336,6 @@
         }
     };
 
-    window.applyColor = function(c) {
-        const s = parseInt(document.getElementById('c-start').value) - 1;
-        const e = parseInt(document.getElementById('c-end').value) - 1;
-        if(s >= 0 && e >= s) {
-            for(let i=s; i<=e && i<window.selected.length; i++) {
-                window.selected[i].color = c;
-            }
-            window.syncData();
-        }
-    };
-
     // =====================================
     // 專屬香香盃名單載入
     // =====================================
@@ -368,7 +346,7 @@
             
             names.forEach((name, i) => {
                 const uniqueId = 'p' + Date.now() + Math.random().toString(36).substr(2, 5) + i;
-                window.unselected.push({ id: uniqueId, name: name, color: 'none' });
+                window.unselected.push({ id: uniqueId, name: name });
             });
             window.syncData();
             alert(`已成功匯入 ${names.length} 位香香盃參賽者！`);
@@ -403,7 +381,7 @@
             names.forEach((name, i) => {
                 // 加入亂數確保大量匯入時 ID 不會重複
                 const uniqueId = 'p' + Date.now() + Math.random().toString(36).substr(2, 5) + i;
-                window.unselected.push({ id: uniqueId, name: name, color: 'none' });
+                window.unselected.push({ id: uniqueId, name: name });
             });
             
             window.syncData();
@@ -454,7 +432,7 @@
             document.getElementById(`cnt-${z}`).innerText = zones[z].length;
             const grid = document.getElementById(`grid-${z}`);
             grid.innerHTML = zones[z].map(p => `
-                <div class="grid-item" data-id="${p.id}" style="background: ${cMap[p.color||'none']}">
+                <div class="grid-item" data-id="${p.id}" style="background: ${zoneColors[z]}">
                     <div class="item-rank">#${globalRank++}</div>
                     <div class="item-remove" onclick="event.stopPropagation(); moveToUnselected('${p.id}')">✕</div>
                     <div class="item-text" title="${p.name}">${p.name}</div>
@@ -494,6 +472,14 @@
             
             const targetItem = target.closest('.grid-item');
             const targetContainer = target.closest('.grid-container');
+
+            // 拖曳時，自動更新分身的底色以反映目標區塊的顏色
+            if(targetContainer) {
+                const currentZone = targetContainer.getAttribute('data-zone');
+                if(currentZone && ghostEl) {
+                    ghostEl.style.background = zoneColors[currentZone];
+                }
+            }
             
             if(targetItem && targetItem !== dragEl) {
                 // 如果指到另一個方塊，自動將底層的方塊推擠讓位
