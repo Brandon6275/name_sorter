@@ -73,6 +73,7 @@
         <input type="text" id="new-name" placeholder="手動輸入人名" style="padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; width: 120px;">
         <button onclick="addNewName()">新增</button>
         <button onclick="openImportModal()" style="background:#10B981; color:white; border-color:#10B981;">批次匯入</button>
+        <button onclick="loadXiangXiangCup()" style="background:#F59E0B; color:white; border-color:#F59E0B;">2027香香盃參賽者</button>
     </div>
     <div id="unselected-list" class="flex-wrap"></div>
 </div>
@@ -92,6 +93,17 @@
         <div style="display:flex; justify-content:flex-end; gap:8px;">
             <button onclick="closeImportModal()">取消</button>
             <button onclick="processImport()" style="background:#3B82F6; color:white; border-color:#3B82F6;">確認匯入</button>
+        </div>
+    </div>
+</div>
+
+<!-- 匯出圖片彈出視窗 (解決手機無法直接下載的問題) -->
+<div id="image-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; justify-content:center; align-items:center; flex-direction:column;">
+    <div style="background:white; padding:15px; border-radius:8px; width:95%; max-width:1050px; display:flex; flex-direction:column; align-items:center; position:relative;">
+        <button onclick="closeImageModal()" style="position:absolute; top:10px; right:10px; background:#EF4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-weight:bold;">關閉</button>
+        <h3 style="margin-top:0; margin-bottom:10px; text-align:center;">手機請「長按圖片」儲存 ➔</h3>
+        <div style="overflow:auto; max-height:75vh; width:100%; border:1px solid #D1D5DB;">
+            <img id="export-image-result" style="width:100%; height:auto; display:block;" />
         </div>
     </div>
 </div>
@@ -176,6 +188,25 @@
         }
     };
 
+    window.loadXiangXiangCup = function() {
+        const namesStr = "便當,明葦,可魯,阿儒,羅伯特,張小丁,凱凱,阿翰,立軍,小熊,阿修,阿耀,小原,耀中,小雷,Ethan,Kery,Eric,香,韋伯,卡特,元信,達達,Po,鈞壬,老謝,凱能,普羅,蔥花,Jasper,孟丞,小柯,小方,阿哲,俊霖,小崇,貝塔,娜娜,家本,東岳,髒髒,妮妮,泰迪,包子,亨利,傑西,Ken,阿走,肯德基,育群,瑞德,阿任,浩文,Benny,小威,潘囍,小林,Fatty,珀芒阿信,阿樂,阿佑,阿郡,邁特,威威,小美,麻糬,胖虎,阿福,奇奇,順諭,厄尼,Josh,華華,小羅,小恩,森,元氣,慶慶,胖拉,梨子";
+        const names = namesStr.split(",");
+        
+        if (window.unselected.length > 0 || window.selected.length > 0) {
+            if (!confirm("載入參賽者名單將會清空目前畫面上的資料，確定要繼續嗎？")) return;
+        }
+        
+        window.unselected = [];
+        window.selected = [];
+        
+        names.forEach((name, i) => {
+            const uniqueId = 'p' + Date.now() + Math.random().toString(36).substring(2, 7) + i;
+            window.unselected.push({ id: uniqueId, name: name.trim(), color: 'none' });
+        });
+        
+        window.syncData();
+    };
+
     window.exportTXT = function() {
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         let txt = "【正式排序名單】\n";
@@ -227,24 +258,35 @@
             grid.style.padding = originalPadding;
             removeBtns.forEach(btn => btn.style.display = '');
 
-            // 針對 iOS/Safari/LINE 優化：轉為 Blob 物件進行下載，避免 Base64 網址過長被阻擋
-            canvas.toBlob(function(blob) {
-                if (!blob) {
-                    alert("圖片產生失敗，請稍後再試。");
-                    return;
-                }
-                const link = document.createElement('a');
-                link.download = '名單排序_十宮格.jpg';
-                link.href = URL.createObjectURL(blob);
-                
-                try {
-                    link.click();
-                    // 釋放記憶體
-                    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-                } catch(e) {
-                    alert("若無法自動下載，請點擊右上角使用「Safari 瀏覽器」開啟此網頁。");
-                }
-            }, 'image/jpeg', 0.9);
+            // 轉為 Base64 網址
+            const imgUrl = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // 建立強制全螢幕遮罩與圖片預覽，適用 iOS 長按儲存
+            const imgModal = document.createElement('div');
+            imgModal.style.position = 'fixed';
+            imgModal.style.top = '0';
+            imgModal.style.left = '0';
+            imgModal.style.width = '100%';
+            imgModal.style.height = '100%';
+            imgModal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+            imgModal.style.zIndex = '999999';
+            imgModal.style.display = 'flex';
+            imgModal.style.flexDirection = 'column';
+            imgModal.style.justifyContent = 'center';
+            imgModal.style.alignItems = 'center';
+            imgModal.style.padding = '20px';
+            
+            imgModal.innerHTML = `
+                <div style="background:white; padding:15px; border-radius:8px; text-align:center; max-width:100%; max-height:100%; display:flex; flex-direction:column;">
+                    <h3 style="margin-top:0; margin-bottom:5px; font-size:16px; color:#1F2937;">📷 請長按下方圖片即可儲存</h3>
+                    <p style="font-size:12px; color:#6B7280; margin-top:0; margin-bottom:10px;">(LINE 瀏覽器及 iPhone Safari 皆適用此方法)</p>
+                    <div style="overflow:auto; flex:1; margin-bottom:15px; border:1px solid #E5E7EB; border-radius:4px;">
+                        <img src="${imgUrl}" style="max-width:100%; height:auto; display:block;" alt="排序結果">
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background:#EF4444; color:white; border:none; padding:12px 24px; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer;">✖ 關閉圖片</button>
+                </div>
+            `;
+            document.body.appendChild(imgModal);
         });
     };
 
@@ -284,6 +326,23 @@
                 window.selected[i].color = c;
             }
             window.syncData();
+        }
+    };
+
+    // =====================================
+    // 專屬香香盃名單載入
+    // =====================================
+    window.loadXiangXiangCup2027 = function() {
+        if(confirm("確定要匯入 2027 香香盃參賽者名單嗎？")) {
+            const rawList = "便當,明葦,可魯,阿儒,羅伯特,張小丁,凱凱,阿翰,立軍,小熊,阿修,阿耀,小原,耀中,小雷,Ethan,Kery,Eric,香,韋伯,卡特,元信,達達,Po,鈞壬,老謝,凱能,普羅,蔥花,Jasper,孟丞,小柯,小方,阿哲,俊霖,小崇,貝塔,娜娜,家本,東岳,髒髒,妮妮,泰迪,包子,亨利,傑西,Ken,阿走,肯德基,育群,瑞德,阿任,浩文,Benny,小威,潘囍,小林,Fatty,珀芒阿信,阿樂,阿佑,阿郡,邁特,威威,小美,麻糬,胖虎,阿福,奇奇,順諭,厄尼,Josh,華華,小羅,小恩,森,元氣,慶慶,胖拉,梨子";
+            const names = rawList.split(',').map(n => n.trim()).filter(n => n.length > 0);
+            
+            names.forEach((name, i) => {
+                const uniqueId = 'p' + Date.now() + Math.random().toString(36).substr(2, 5) + i;
+                window.unselected.push({ id: uniqueId, name: name, color: 'none' });
+            });
+            window.syncData();
+            alert(`已成功匯入 ${names.length} 位香香盃參賽者！`);
         }
     };
 
