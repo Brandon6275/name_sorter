@@ -53,7 +53,7 @@
         <span style="border-left: 1px solid #D1D5DB; margin: 0 5px;"></span>
         <button onclick="exportTXT()" style="background:#10B981; color:white; border-color:#10B981;">匯出 TXT</button>
         <button onclick="exportCSV()" style="background:#10B981; color:white; border-color:#10B981;">匯出 CSV</button>
-        <button onclick="exportPNG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 PNG (十宮格)</button>
+        <button onclick="exportJPG()" style="background:#8B5CF6; color:white; border-color:#8B5CF6;">匯出 JPG (十宮格)</button>
     </div>
     
     <div style="margin-top:10px; font-size: 13px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;">
@@ -202,7 +202,7 @@
         link.click();
     };
 
-    window.exportPNG = function() {
+    window.exportJPG = function() {
         const grid = document.getElementById('grid-list');
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         
@@ -227,11 +227,24 @@
             grid.style.padding = originalPadding;
             removeBtns.forEach(btn => btn.style.display = '');
 
-            // 下載圖片
-            const link = document.createElement('a');
-            link.download = '名單排序_十宮格.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            // 針對 iOS/Safari/LINE 優化：轉為 Blob 物件進行下載，避免 Base64 網址過長被阻擋
+            canvas.toBlob(function(blob) {
+                if (!blob) {
+                    alert("圖片產生失敗，請稍後再試。");
+                    return;
+                }
+                const link = document.createElement('a');
+                link.download = '名單排序_十宮格.jpg';
+                link.href = URL.createObjectURL(blob);
+                
+                try {
+                    link.click();
+                    // 釋放記憶體
+                    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                } catch(e) {
+                    alert("若無法自動下載，請點擊右上角使用「Safari 瀏覽器」開啟此網頁。");
+                }
+            }, 'image/jpeg', 0.9);
         });
     };
 
