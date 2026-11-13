@@ -7,7 +7,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
-            --z-red: #FEE2E2; --z-green: #DCFCE7; 
+            --z-red-strong: #FCA5A5; --z-red: #FEE2E2; 
+            --z-green-dark: #9CB49F; --z-green: #DCFCE7; 
             --z-yellow: #FEF9C3; --z-blue: #DBEAFE;
         }
         * { box-sizing: border-box; font-family: sans-serif; }
@@ -83,16 +84,24 @@
     </div>
 
     <div class="panel" style="border-top: 4px solid #3B82F6;">
-        <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳，並跨 ABCD 區細分</span></strong>
+        <strong style="display:block; margin-bottom: 8px;">正式排序區 (<span id="s-cnt">0</span>) <span style="font-size:12px; color:#6B7280; font-weight:normal;">- 長按方塊可拖曳，並跨區段細分</span></strong>
         
         <div id="export-target">
             <div class="zone-wrapper">
-                <div class="zone-header">區間 A (<span id="cnt-A">0</span>)</div>
-                <div class="grid-container" id="grid-A" data-zone="A"></div>
+                <div class="zone-header">區間 A+ (<span id="cnt-A+">0</span>)</div>
+                <div class="grid-container" id="grid-A+" data-zone="A+"></div>
             </div>
             <div class="zone-wrapper">
-                <div class="zone-header">區間 B (<span id="cnt-B">0</span>)</div>
-                <div class="grid-container" id="grid-B" data-zone="B"></div>
+                <div class="zone-header">區間 A- (<span id="cnt-A-">0</span>)</div>
+                <div class="grid-container" id="grid-A-" data-zone="A-"></div>
+            </div>
+            <div class="zone-wrapper">
+                <div class="zone-header">區間 B+ (<span id="cnt-B+">0</span>)</div>
+                <div class="grid-container" id="grid-B+" data-zone="B+"></div>
+            </div>
+            <div class="zone-wrapper">
+                <div class="zone-header">區間 B- (<span id="cnt-B-">0</span>)</div>
+                <div class="grid-container" id="grid-B-" data-zone="B-"></div>
             </div>
             <div class="zone-wrapper">
                 <div class="zone-header">區間 C (<span id="cnt-C">0</span>)</div>
@@ -152,7 +161,12 @@
 
     window.unselected = [];
     window.selected = [];
-    const zoneColors = { A: 'var(--z-red)', B: 'var(--z-green)', C: 'var(--z-yellow)', D: 'var(--z-blue)' };
+    const zoneColors = { 
+        'A+': 'var(--z-red-strong)', 'A-': 'var(--z-red)', 
+        'B+': 'var(--z-green-dark)', 'B-': 'var(--z-green)', 
+        'C': 'var(--z-yellow)', 'D': 'var(--z-blue)' 
+    };
+    const zoneList = ['A+', 'A-', 'B+', 'B-', 'C', 'D'];
 
     let db, docRef;
     
@@ -207,7 +221,7 @@
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         let txt = "【正式排序名單】\n";
         window.selected.forEach((p, i) => {
-            txt += `#${i+1} [區間 ${p.zone || 'A'}] ${p.name}\n`;
+            txt += `#${i+1} [區間 ${p.zone || 'A+'}] ${p.name}\n`;
         });
         const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
         const link = document.createElement("a");
@@ -220,7 +234,7 @@
         if(window.selected.length === 0) return alert("排序區沒有資料！");
         let csv = "\uFEFF名次,區間,姓名\n"; 
         window.selected.forEach((p, i) => {
-            csv += `${i+1},${p.zone || 'A'},${p.name}\n`;
+            csv += `${i+1},${p.zone || 'A+'},${p.name}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -286,7 +300,7 @@
 
     window.moveAllToSorted = function() {
         if(!isAdmin) return;
-        window.unselected.forEach(p => p.zone = 'A'); 
+        window.unselected.forEach(p => p.zone = 'A+'); 
         window.selected = window.selected.concat(window.unselected); 
         window.unselected = []; 
         window.syncData();
@@ -304,7 +318,7 @@
         const idx = window.unselected.findIndex(p => p.id === id);
         if(idx > -1) { 
             const p = window.unselected.splice(idx, 1)[0];
-            p.zone = 'A'; 
+            p.zone = 'A+'; 
             window.selected.push(p); 
             window.syncData(); 
         }
@@ -395,15 +409,15 @@
             </div>`
         ).join('');
 
-        const zones = { A: [], B: [], C: [], D: [] };
+        const zones = { 'A+': [], 'A-': [], 'B+': [], 'B-': [], 'C': [], 'D': [] };
         window.selected.forEach(p => {
-            const z = p.zone || 'A';
+            const z = p.zone || 'A+';
             if (zones[z]) zones[z].push(p);
-            else zones['A'].push(p);
+            else zones['A+'].push(p);
         });
 
         let globalRank = 1;
-        ['A', 'B', 'C', 'D'].forEach(z => {
+        zoneList.forEach(z => {
             document.getElementById(`cnt-${z}`).innerText = zones[z].length;
             const grid = document.getElementById(`grid-${z}`);
             grid.innerHTML = zones[z].map(p => `
@@ -476,7 +490,7 @@
             dragEl = null;
             
             const newSelected = [];
-            ['A', 'B', 'C', 'D'].forEach(zone => {
+            zoneList.forEach(zone => {
                 document.getElementById('grid-' + zone).querySelectorAll('.grid-item').forEach(el => {
                     const id = el.getAttribute('data-id');
                     const person = window.selected.find(p => p.id === id);
@@ -524,7 +538,7 @@
 
     function updateRanks() {
         let globalRank = 1;
-        ['A', 'B', 'C', 'D'].forEach(zone => {
+        zoneList.forEach(zone => {
             const container = document.getElementById('grid-' + zone);
             container.querySelectorAll('.grid-item').forEach(el => {
                 const rankDiv = el.querySelector('.item-rank');
