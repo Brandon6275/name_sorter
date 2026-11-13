@@ -8,7 +8,7 @@
     <style>
         :root {
             --z-red-strong: #FCA5A5; --z-red: #FEE2E2; 
-            --z-green-dark: #9CB49F; --z-green: #DCFCE7; 
+            --z-green-dark: #9CB49F; --z-green-mid: #BCE3C5; --z-green: #DCFCE7; 
             --z-yellow: #FEF9C3; --z-blue: #DBEAFE;
         }
         * { box-sizing: border-box; font-family: sans-serif; }
@@ -100,6 +100,10 @@
                 <div class="grid-container" id="grid-B+" data-zone="B+"></div>
             </div>
             <div class="zone-wrapper">
+                <div class="zone-header">區間 B (<span id="cnt-B">0</span>)</div>
+                <div class="grid-container" id="grid-B" data-zone="B"></div>
+            </div>
+            <div class="zone-wrapper">
                 <div class="zone-header">區間 B- (<span id="cnt-B-">0</span>)</div>
                 <div class="grid-container" id="grid-B-" data-zone="B-"></div>
             </div>
@@ -163,10 +167,10 @@
     window.selected = [];
     const zoneColors = { 
         'A+': 'var(--z-red-strong)', 'A-': 'var(--z-red)', 
-        'B+': 'var(--z-green-dark)', 'B-': 'var(--z-green)', 
+        'B+': 'var(--z-green-dark)', 'B': 'var(--z-green-mid)', 'B-': 'var(--z-green)', 
         'C': 'var(--z-yellow)', 'D': 'var(--z-blue)' 
     };
-    const zoneList = ['A+', 'A-', 'B+', 'B-', 'C', 'D'];
+    const zoneList = ['A+', 'A-', 'B+', 'B', 'B-', 'C', 'D'];
 
     let db, docRef;
     
@@ -409,7 +413,7 @@
             </div>`
         ).join('');
 
-        const zones = { 'A+': [], 'A-': [], 'B+': [], 'B-': [], 'C': [], 'D': [] };
+        const zones = { 'A+': [], 'A-': [], 'B+': [], 'B': [], 'B-': [], 'C': [], 'D': [] };
         window.selected.forEach(p => {
             const z = p.zone || 'A+';
             if (zones[z]) zones[z].push(p);
